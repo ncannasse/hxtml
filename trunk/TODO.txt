@@ -1,0 +1,37 @@
+CSS
+- font-family / font-variant / font-weight
+- letter-spacing / word-spacing / text-indent
+- text-align
+- color hex 3/6 + missing constants
+- size "em" units
+- width %
+- borders / -moz-border-radius
+- vertical-align
+- background-position
+- background composites
+- margin/padding composites
+- float / clear
+- overflows
+- visibility
+- max/min-height, max/min-width
+- position : absolute,
+	top, left, right, bottom, z-index
+- text-transform
+- text-decoration
+- font composites
+- white-space
+- direction : exception on rtl
+- cursor
+- opacity
+
+HTML
+- tables
+- ul/li + list-style-type
+- p
+- dl/dt/dd
+- h1-6
+- pre
+- CDATA
+- i / em / b / strong
+- forms (form, input, select, option, textarea)
+- script
