@@ -13,9 +13,6 @@ class Dom {
 	
 	var ctx(getContext, null) : Context;
 	var e : Context.Element;
-	var prev : Dom;
-	var next : Dom;
-	
 	
 	public var id : String;
 	public var classes : Array<String>;
@@ -40,7 +37,6 @@ class Dom {
 	public function new(b, name) {
 		this.browser = b;
 		this.name = name;
-		this.defStyle = browser.css.makeDefaultStyle(this);
 	}
 	
 	inline function getContext() {
@@ -57,11 +53,6 @@ class Dom {
 			childs = [];
 		childs.push(c);
 		c.parent = this;
-		var prev = childs[childs.length - 2];
-		if( prev != null ) {
-			c.prev = prev;
-			prev.next = c;
-		}
 	}
 	
 	public function setAttribute( a : String, v : String ) {
@@ -70,6 +61,7 @@ class Dom {
 			id = v;
 			browser.register(id, this);
 		case "style":
+			defStyle = new Style();
 			new CssParser().parse(v,defStyle);
 		case "class":
 			classes = ~/[ \t]+/g.split(StringTools.trim(v));
@@ -77,11 +69,39 @@ class Dom {
 			throw "Unsupported attribute " + name + "." + a;
 		}
 	}
+	
+	public function getPrev() {
+		if( parent == null ) return null;
+		var prev = null;
+		for( c in parent.childs ) {
+			if( c == this ) return prev;
+			if( c.style != null && c.style.display != None ) prev = c;
+		}
+		return null;
+	}
 
+	public function getNext() {
+		if( parent == null ) return null;
+		var found = true;
+		for( c in parent.childs ) {
+			if( c == this ) found = true;
+			if( found && (c.style == null || c.style.display != None) ) return c;
+		}
+		return null;
+	}
+	
 	public function updateStyle() {
 		browser.css.applyClasses(this);
 		if( parent != null )
 			style.inherit(parent.style);
+		if( style.marginTop != null ) {
+			var prev = getPrev();
+			if( prev != null && prev.style.marginBottom != null ) {
+				if( prev.style.marginBottom < style.marginTop )
+					prev.style.marginBottom = style.marginTop;
+				style.marginTop = 0;
+			}
+		}
 		if( childs != null )
 			for( d in childs )
 				d.updateStyle();
@@ -115,7 +135,8 @@ class Dom {
 		initElement();
 		if( childs != null )
 			for( d in childs )
-				d.render();
+				if( d.style.display != None )
+					d.render();
 	}
 	
 	public function updateSize( width : Int, height : Null<Int> ) {
@@ -141,6 +162,8 @@ class Dom {
 			baseLineHeights = [];
 			while( i < count ) {
 				var d = childs[i++];
+				if( d.style.display == None )
+					continue;
 				var isBlock = (d.style.display == Block);
 				// create new line
 				if( isBlock && lineWidth > 0 ) {
@@ -161,9 +184,6 @@ class Dom {
 					if( d2 == null && lineWidth > 0 && d.totalWidth > allowedWidth )
 						d2 = d.getText().breakAt(allowedWidth);
 					if( d2 != null ) {
-						d2.next = d.next;
-						d2.prev = d;
-						d.next = d2;
 						d2.parent = this;
 						d2.updateStyle();
 						d.updateSize(allowedWidth, height);
@@ -220,6 +240,8 @@ class Dom {
 			var px0 = style.paddingLeft;
 			var px = px0, py = style.paddingTop;
 			for( d in childs ) {
+				if( d.style.display == None )
+					continue;
 				if( d.lineIndex != lineIndex ) {
 					py += lineHeights[lineIndex++];
 					px = px0;
@@ -234,13 +256,18 @@ class Dom {
 
 class DomText extends Dom {
 	
-	public var text : String;
+	var text : String;
 	var telt : Context.Text;
-	var trim : Bool;
+	var displayText : String;
 	
 	public function new(b,t) {
 		super(b, null);
 		text = ~/[ \r\n\t]+/g.split(t).join(" ");
+	}
+	
+	public function appendSpace() {
+		if( text.charCodeAt(text.length - 1) != " ".code )
+			text += " ";
 	}
 
 	public function breakAt( width : Int ) {
@@ -251,40 +278,46 @@ class DomText extends Dom {
 			return null;
 		var start = 0;
 		while( true ) {
-			var pos = text.indexOf(" ", start);
+			var pos = displayText.indexOf(" ", start);
 			if( pos == -1 || pos > index ) break;
 			start = pos + 1;
 		}
 		if( start == 0 )
 			return null;
-		var tsub = text.substr(start);
-		text = text.substr(0, start - 1);
-		telt = null;
+		var tsub = displayText.substr(start);
+		var firstSpace = text.charAt(0) == " ";
+		var lastSpace = text.charAt(1) == " ";
+		text = displayText = displayText.substr(0, start - 1);
+		if( firstSpace ) text = " " + text;
+		if( lastSpace ) tsub += " ";
 		return new DomText(browser, tsub);
 	}
 	
-	override function updateSize(w, h) {
+	override function updateStyle() {
+		super.updateStyle();
 		// first update
-		if( !trim ) {
-			trim = true;
-			if( parent == null || parent.childs.length == 1 ) {
-				text = StringTools.trim(text);
-				if( text == "" ) text = " ";
-			} else {
-				if( prev == null || prev.style.display == Block )
-					text = StringTools.ltrim(text);
-				if( next == null || next.style.display == Block )
-					text = StringTools.rtrim(text);
-			}
+		if( parent == null || parent.childs.length == 1 ) {
+			displayText = StringTools.trim(text);
+			if( displayText == "" ) displayText = " ";
+		} else {
+			displayText = text;
+			var prev = getPrev();
+			if( prev == null || prev.style.display == Block )
+				displayText = StringTools.ltrim(displayText);
+			var next = getNext();
+			if( next == null || next.style.display == Block )
+				displayText = StringTools.rtrim(displayText);
+			if( displayText == "" )
+				style.display = None;
 		}
-		if( text != "" ) {
-			telt = ctx.createText(text, style);
-			preferredWidth = telt.width;
-			preferredHeight = telt.height;
-		}
+	}
+	
+	override function updateSize(w, h) {
+		telt = ctx.createText(displayText, style);
+		preferredWidth = telt.width;
+		preferredHeight = telt.height;
 		super.updateSize(w, h);
-		if( telt != null )
-			baseLineHeight = telt.getBaseLineHeight();
+		baseLineHeight = telt.getBaseLineHeight();
 	}
 	
 	override function initElement() {

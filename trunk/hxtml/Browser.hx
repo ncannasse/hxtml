@@ -54,6 +54,7 @@ class Browser {
 	}
 	
 	public function refresh() {
+		trace("REFRESH");
 		invalid = false;
 		loaded = true;
 		ctx.clear();
@@ -107,11 +108,8 @@ class Browser {
 						continue;
 					if( prev.name != null )
 						hasText = true;
-					else {
-						var d = prev.getText();
-						if( d.text.charCodeAt(d.text.length - 1) != " ".code )
-							d.text += " ";
-					}
+					else
+						prev.getText().appendSpace();
 					continue;
 				}
 				if( hasText ) {

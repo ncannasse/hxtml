@@ -11,12 +11,6 @@ class CssEngine {
 		rules = [];
 	}
 
-	public function makeDefaultStyle( d : Dom ) {
-		var s = new Style();
-		applyDefaultStyle(s, d.name);
-		return s;
-	}
-	
 	function applyDefaultStyle( s : Style, node : String ) {
 		s.display = Inline;
 		switch( node ) {
@@ -51,13 +45,15 @@ class CssEngine {
 	
 	public function applyClasses( d : Dom ) {
 		var s = new Style();
-		s.apply(d.defStyle);
+		applyDefaultStyle(s, d.name);
 		d.style = s;
 		for( r in rules ) {
 			if( !ruleMatch(r.c, d) )
 				continue;
 			s.apply(r.s);
 		}
+		if( d.defStyle != null )
+			s.apply(d.defStyle);
 	}
 	
 	function ruleMatch( c : CssClass, d : Dom ) {

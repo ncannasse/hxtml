@@ -48,65 +48,65 @@ class CssParser {
 
 	// ----------------- style apply ---------------------------
 	
-	function applyStyle( r : String, v : Value ) {
+	function applyStyle( r : String, v : Value ) : Bool {
 		switch( r ) {
 		case "margin":
 			var i = getPix(v);
 			if( i != null ) {
 				s.margin(i, i, i, i);
-				return;
+				return true;
 			}
 		case "margin-left":
 			var i = getPix(v);
-			if( i != null ) { s.marginLeft = i; return; }
+			if( i != null ) { s.marginLeft = i; return true; }
 		case "margin-right":
 			var i = getPix(v);
-			if( i != null ) { s.marginRight = i; return; }
+			if( i != null ) { s.marginRight = i; return true; }
 		case "margin-top":
 			var i = getPix(v);
-			if( i != null ) { s.marginTop = i; return; }
+			if( i != null ) { s.marginTop = i; return true; }
 		case "margin-bottom":
 			var i = getPix(v);
-			if( i != null ) { s.marginBottom = i; return; }
+			if( i != null ) { s.marginBottom = i; return true; }
 		case "padding":
 			var i = getPix(v);
 			if( i != null ) {
 				s.padding(i, i, i, i);
-				return;
+				return true;
 			}
 		case "padding-left":
 			var i = getPix(v);
-			if( i != null ) { s.paddingLeft = i; return; }
+			if( i != null ) { s.paddingLeft = i; return true; }
 		case "padding-right":
 			var i = getPix(v);
-			if( i != null ) { s.paddingRight = i; return; }
+			if( i != null ) { s.paddingRight = i; return true; }
 		case "padding-top":
 			var i = getPix(v);
-			if( i != null ) { s.paddingTop = i; return; }
+			if( i != null ) { s.paddingTop = i; return true; }
 		case "padding-bottom":
 			var i = getPix(v);
-			if( i != null ) { s.paddingBottom = i; return; }
+			if( i != null ) { s.paddingBottom = i; return true; }
 		case "width":
 			var i = getPix(v);
 			if( i != null ) {
 				s.width = i;
-				return;
+				return true;
 			}
 		case "height":
 			var i = getPix(v);
 			if( i != null ) {
 				s.height = i;
-				return;
+				return true;
 			}
 		case "background-color":
 			var c = getCol(v);
 			if( c != null ) {
 				s.bgColor = c;
-				return;
+				return true;
 			}
 			if( getIdent(v) == "transparent" ) {
 				s.bgTransparent = true;
-				return;
+				return true;
 			}
 		case "background-repeat":
 			s.bgRepeatX = false;
@@ -123,7 +123,7 @@ class CssParser {
 					default: error = true; break;
 					}
 			if( !error )
-				return;
+				return true;
 		case "background-image":
 			switch( v ) {
 			case VCall(v, args):
@@ -131,7 +131,7 @@ class CssParser {
 					switch(args[0]) {
 					case VString(url):
 						s.bgImage = url;
-						return;
+						return true;
 					default:
 					}
 				}
@@ -141,18 +141,24 @@ class CssParser {
 			var i = getPix(v);
 			if( i != null ) {
 				s.fontSize = i;
-				return;
+				return true;
 			}
 		case "line-height":
 			var i = getPix(v);
 			if( i != null ) {
 				s.lineHeight = i;
-				return;
+				return true;
+			}
+		case "display":
+			switch( getIdent(v) ) {
+			case "none": s.display = None; return true;
+			case "inline": s.display = Inline; return true;
+			case "block": s.display = Block; return true;
 			}
 		default:
 			throw "Not implemented '"+r+"' = "+Std.string(v);
 		}
-		invalid(r, v);
+		return false;
 	}
 	
 	function getPix( v : Value ) : Null<Int> {
@@ -204,10 +210,6 @@ class CssParser {
 		};
 	}
 	
-	function invalid( r : String, v : Value ) {
-		throw "Invalid value " + Std.string(v) + " for css " + r;
-	}
-	
 	// ---------------------- generic parsing --------------------
 	
 	function unexpected( t : Token ) : Dynamic {
@@ -246,7 +248,8 @@ class CssParser {
 			var r = readIdent();
 			expect(TDblDot);
 			var v = readValue();
-			applyStyle(r, v);
+			if( !applyStyle(r, v) )
+				throw "Invalid value " + Std.string(v) + " for css " + r;
 			if( isToken(eof) )
 				break;
 			expect(TSemicolon);
