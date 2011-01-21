@@ -1,0 +1,6 @@
+-cp test
+-swf test/render.swf
+-swf-version 9
+-swf-header 800:600:30:FF0000
+--flash-strict
+-main Test
