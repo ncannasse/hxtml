@@ -3,6 +3,7 @@ package hxtml;
 enum DisplayStyle {
 	Inline;
 	Block;
+	None;
 }
 
 enum BgRepeatMode {
