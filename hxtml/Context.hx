@@ -53,8 +53,12 @@ class Text {
 		this.tf = tf;
 	}
 	
-	public function getCharIndex( size : Int ) {
-		return tf.getCharIndexAtPoint(size, 2);
+	public function getCharIndex( px : Int ) {
+		return tf.getCharIndexAtPoint(px + 2 /* left-margin */, 2);
+	}
+
+	public function getBaseLineHeight() {
+		return Math.ceil(tf.getLineMetrics(0).ascent) + 1;
 	}
 	
 	function getWidth() {
@@ -62,7 +66,7 @@ class Text {
 	}
 
 	function getHeight() {
-		return Math.ceil(tf.textHeight);
+		return Math.ceil(tf.textHeight) + 1;
 	}
 	
 }
@@ -125,7 +129,9 @@ class Context {
 		t.text = text;
 		t.selectable = false;
 		t.alpha = 0.8;
+		// remove top-left text margin
 		t.x = -2;
+		t.y = -1;
 		return new Text(t);
 	}
 	

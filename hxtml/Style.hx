@@ -35,6 +35,7 @@ class Style {
 	public var fontSize : Null<Float>;
 	public var textColor : Null<Int>;
 	public var underline : Null<Bool>;
+	public var lineHeight : Null<Int>;
 	
 	public var bgColor : Null<Int>;
 	public var bgTransparent : Null<Bool>;
@@ -73,6 +74,8 @@ class Style {
 			textColor = s.textColor;
 		if( underline == null )
 			underline = s.underline;
+		if( lineHeight == null )
+			lineHeight = s.lineHeight;
 	}
 	
 	public function apply( s : Style ) {
