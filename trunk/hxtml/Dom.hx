@@ -22,6 +22,7 @@ class Dom {
 	
 	public var preferredWidth : Int;
 	public var preferredHeight : Int;
+	public var baseLineHeight : Int;
 	
 	public var posX : Int;
 	public var posY : Int;
@@ -32,7 +33,9 @@ class Dom {
 	public var totalWidth : Int;
 	public var totalHeight : Int;
 	
-	public var lineIndex : Int;
+	var lineIndex : Int;
+	var lineHeights : Array<Int>;
+	var baseLineHeights : Array<Int>;
 	
 	public function new(b, name) {
 		this.browser = b;
@@ -132,24 +135,31 @@ class Dom {
 		// inline childs
 		if( childs != null ) {
 			var allowedWidth = width - (mlr + plr);
-			var lineWidth = 0, lineHeight = 0;
-			var i = 0, count = childs.length, breakLine = false, lineIndex = 0;
+			var lineWidth = 0, lineHeight = 0, baseLine = 0;
+			var i = 0, count = childs.length, lineIndex = 0;
+			lineHeights = [];
+			baseLineHeights = [];
 			while( i < count ) {
 				var d = childs[i++];
 				var isBlock = (d.style.display == Block);
 				// create new line
 				if( isBlock && lineWidth > 0 ) {
+					lineHeights.push(lineHeight);
+					baseLineHeights.push(baseLine);
 					contentHeight += lineHeight;
 					if( lineWidth > contentWidth )
 						contentWidth = lineWidth;
 					lineWidth = 0;
 					lineHeight = 0;
+					baseLine = 0;
 					lineIndex++;
 				}
 				d.updateSize(allowedWidth - lineWidth, height);
 				// check breakable
 				if( d.name == null && browser.isLoaded() && lineWidth + d.totalWidth > allowedWidth ) {
 					var d2 : Dom = d.getText().breakAt(allowedWidth - lineWidth);
+					if( d2 == null && lineWidth > 0 && d.totalWidth > allowedWidth )
+						d2 = d.getText().breakAt(allowedWidth);
 					if( d2 != null ) {
 						d2.next = d.next;
 						d2.prev = d;
@@ -163,21 +173,29 @@ class Dom {
 				}
 				// create new line
 				if( lineWidth > 0 && (isBlock || lineWidth + d.totalWidth > allowedWidth) ) {
+					lineHeights.push(lineHeight);
+					baseLineHeights.push(baseLine);
 					contentHeight += lineHeight;
 					if( lineWidth > contentWidth )
 						contentWidth = lineWidth;
 					lineWidth = 0;
 					lineHeight = 0;
+					baseLine = 0;
 					lineIndex++;
 				}
 				// add to current line
 				lineWidth += d.totalWidth;
 				d.lineIndex = lineIndex;
 				if( d.totalHeight > lineHeight ) lineHeight = d.totalHeight;
+				if( d.baseLineHeight > baseLine ) baseLine = d.baseLineHeight;
 			}
-			if( lineWidth > contentWidth )
-				contentWidth = lineWidth;
-			contentHeight += lineHeight;
+			if( lineWidth > 0 ) {
+				lineHeights.push(lineHeight);
+				baseLineHeights.push(baseLine);
+				if( lineWidth > contentWidth )
+					contentWidth = lineWidth;
+				contentHeight += lineHeight;
+			}
 		}
 		if( contentWidth < preferredWidth )
 			contentWidth = preferredWidth;
@@ -189,6 +207,7 @@ class Dom {
 			contentHeight = style.height;
 		totalWidth = contentWidth + mlr + plr;
 		totalHeight = contentHeight + mtb + ptb;
+		baseLineHeight = ( childs == null || baseLineHeights.length > 1 ) ? totalHeight : baseLineHeights[0];
 	}
 	
 	public function updatePos(x, y) {
@@ -197,27 +216,16 @@ class Dom {
 		posX = x;
 		posY = y;
 		if( childs != null ) {
-			var lineWidth = 0, lineHeight = 0;
+			var lineIndex = 0;
 			var px0 = style.paddingLeft;
 			var px = px0, py = style.paddingTop;
 			for( d in childs ) {
-				var isBlock = d.style.display == Block;
-				if( isBlock || (lineWidth > 0 && lineWidth + d.totalWidth > contentWidth) ) {
-					py += lineHeight;
+				if( d.lineIndex != lineIndex ) {
+					py += lineHeights[lineIndex++];
 					px = px0;
-					lineWidth = 0;
-					lineHeight = 0;
 				}
-				d.updatePos(px, py);
+				d.updatePos(px, py + baseLineHeights[lineIndex] - d.baseLineHeight);
 				px += d.totalWidth;
-				lineWidth += d.totalWidth;
-				if( d.totalHeight > lineHeight ) lineHeight = d.totalHeight;
-				if( isBlock ) {
-					py += lineHeight;
-					px = px0;
-					lineWidth = 0;
-					lineHeight = 0;
-				}
 			}
 		}
 	}
@@ -236,9 +244,11 @@ class DomText extends Dom {
 	}
 
 	public function breakAt( width : Int ) {
+		if( telt == null )
+			return null;
 		var index = telt.getCharIndex(width);
-		trace("BREAK #" + text + "# at " + width + " = "+index);
-		if( index < 0 ) throw "assert";
+		if( index < 0 )
+			return null;
 		var start = 0;
 		while( true ) {
 			var pos = text.indexOf(" ", start);
@@ -272,16 +282,13 @@ class DomText extends Dom {
 			preferredWidth = telt.width;
 			preferredHeight = telt.height;
 		}
-		super.updateSize(w,h);
+		super.updateSize(w, h);
+		if( telt != null )
+			baseLineHeight = telt.getBaseLineHeight();
 	}
 	
 	override function initElement() {
 		if( telt != null ) ctx.addText(e, telt);
-	}
-
-	override function updatePos( x, y ) {
-		posX = x;
-		posY = y + totalHeight - preferredHeight;
 	}
 
 }

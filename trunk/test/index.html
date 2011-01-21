@@ -7,23 +7,6 @@
 <div id="html" style="width : 600px; height : 400px; border : 1px solid black; background-color : white; opacity : 0.5">
 </div>
 
-<script type="text/javascript">
-	function init() {
-		var x = new XMLHttpRequest();
-		x.open("GET","test.html",false);
-		x.send();
-		var data = "<div"+x.responseText.split("<body")[1].split("</body>")[0]+"</div>";
-		document.getElementById("html").innerHTML = data;
-		return false;
-	}
-	function toggle(name) {
-		var e = document.getElementById(name);
-		e.style.display = (e.style.display == "none") ? "" : "none";
-		return false;
-	}
-	init();
-</script>
-
 <div id="flash" style="position : absolute; width : 600px; height : 400px; left : 10px; top : 10px; border : 1px solid red">
 <object
   classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000"
@@ -66,6 +49,27 @@
 		<li><a href="#" onclick="return init()">Reload HTML</a></li>
 	</ul>
 </div>
+
+<script type="text/javascript">
+	function init() {
+		var x = new XMLHttpRequest();
+		x.open("GET","test.html",false);
+		x.send();
+		var data = "<div"+x.responseText.split("<body")[1].split("</body>")[0]+"</div>";
+		document.getElementById("html").innerHTML = data;
+		return false;
+	}
+	function toggle(name) {
+		var e = document.getElementById(name);
+		var view = (e.style.display == "none") ? true : false;
+		e.style.display = view ? "" : "none";
+		document.cookie = name+"="+(view?1:0);
+		return false;
+	}
+	init();
+	if( document.cookie.indexOf("flash=0") >= 0 ) toggle("flash");
+	if( document.cookie.indexOf("html=0") >= 0 ) toggle("html");
+</script>
 
 </body>
 </html>

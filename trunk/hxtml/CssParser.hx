@@ -143,6 +143,12 @@ class CssParser {
 				s.fontSize = i;
 				return;
 			}
+		case "line-height":
+			var i = getPix(v);
+			if( i != null ) {
+				s.lineHeight = i;
+				return;
+			}
 		default:
 			throw "Not implemented '"+r+"' = "+Std.string(v);
 		}
