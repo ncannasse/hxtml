@@ -6,11 +6,28 @@ enum DisplayStyle {
 	None;
 }
 
-enum BgRepeatMode {
-	BRM_xy;
-	BRM_x;
-	BRM_y;
-	BRM_no;
+enum Unit {
+	Pix( v : Int );
+	Percent( v : Float );
+	EM( v : Float );
+}
+
+enum FontStyle {
+	FSNormal;
+	FSItalic;
+	FSOblique;
+}
+
+enum TextDecoration {
+	TDNone;
+	TDUnderline;
+}
+
+enum TextTransform {
+	TFNone;
+	TFCapitalize;
+	TFUppercase;
+	TFLowercase;
 }
 
 typedef CssClass = {
@@ -32,18 +49,35 @@ class Style {
 	public var paddingTop : Null<Int>;
 	public var paddingRight : Null<Int>;
 	public var paddingBottom : Null<Int>;
+
+	public var borderLeft : Null<Int>;
+	public var borderTop : Null<Int>;
+	public var borderRight : Null<Int>;
+	public var borderBottom : Null<Int>;
+
+	public var borderLeftColor : Null<Int>;
+	public var borderTopColor : Null<Int>;
+	public var borderRightColor : Null<Int>;
+	public var borderBottomColor : Null<Int>;
 	
+	// inherited
 	public var font : Context.Font; // family + style
+	public var fontFamily : Null<Array<String>>;
+	public var fontWeight : Null<Bool>;
+	public var fontStyle : Null<FontStyle>;
 	public var fontSize : Null<Float>;
 	public var textColor : Null<Int>;
-	public var underline : Null<Bool>;
-	public var lineHeight : Null<Int>;
+	public var textDecoration : Null<TextDecoration>;
+	public var textTransform : Null<TextTransform>;
+	public var lineHeight : Null<Unit>;
 	
 	public var bgColor : Null<Int>;
 	public var bgTransparent : Null<Bool>;
 	public var bgImage : Null<String>;
 	public var bgRepeatX : Null<Bool>;
 	public var bgRepeatY : Null<Bool>;
+	public var bgPosX : Null<Unit>;
+	public var bgPosY : Null<Unit>;
 	
 	public var width : Null<Int>;
 	public var height : Null<Int>;
@@ -68,14 +102,23 @@ class Style {
 	}
 	
 	public function inherit( s : Style ) {
-		if( font == null )
+		if( fontFamily == null ) {
+			fontFamily = s.fontFamily;
 			font = s.font;
+		} else
+			font = Context.resolveFont(fontFamily);
+		if( fontWeight == null )
+			fontWeight = s.fontWeight;
+		if( fontStyle == null )
+			fontStyle = s.fontStyle;
 		if( fontSize == null )
 			fontSize = s.fontSize;
 		if( textColor == null )
 			textColor = s.textColor;
-		if( underline == null )
-			underline = s.underline;
+		if( textDecoration == null )
+			textDecoration = s.textDecoration;
+		if( textTransform == null )
+			textTransform = s.textTransform;
 		if( lineHeight == null )
 			lineHeight = s.lineHeight;
 	}

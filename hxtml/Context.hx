@@ -1,4 +1,5 @@
 package hxtml;
+import hxtml.Style;
 
 class Element {
 	
@@ -71,11 +72,6 @@ class Text {
 	
 }
 
-typedef FontStyle = {
-	var bold : Bool;
-	var italic : Bool;
-}
-
 class Font {
 
 	public var f : flash.text.Font;
@@ -93,6 +89,7 @@ class Context {
 	var clicks : Array<Dom>;
 	
 	var imageCash : Hash<Image>;
+	var bfill : flash.geom.Matrix;
 	
 	public var root : Element;
 	public var pageWidth : Int;
@@ -103,6 +100,7 @@ class Context {
 		clicks = [];
 		imageCash = new Hash();
 		pageWidth = width;
+		bfill = new flash.geom.Matrix();
 	}
 	
 	public function clear() {
@@ -124,7 +122,7 @@ class Context {
 		f.font = s.font.f.fontName;
 		f.size = s.fontSize;
 		f.color = s.textColor;
-		f.underline = s.underline;
+		f.underline = (s.textDecoration == TDUnderline);
 		t.defaultTextFormat = f;
 		t.text = text;
 		t.selectable = false;
@@ -144,9 +142,11 @@ class Context {
 		p.e.graphics.drawRect(0, 0, width, height);
 	}
 	
-	public function addBackgroundImage( p : Element, i : Image, s : Style, width : Int, height : Int ) {
-		p.e.graphics.beginBitmapFill(i.bmp);
-		p.e.graphics.drawRect(0, 0, width, height);
+	public function addBackgroundImage( p : Element, i : Image, s : Style, px : Int, py : Int, width : Int, height : Int, repeatX : Bool, repeatY : Bool ) {
+		bfill.tx = px;
+		bfill.ty = py;
+		p.e.graphics.beginBitmapFill(i.bmp, bfill);
+		p.e.graphics.drawRect(repeatX ? 0 : px, repeatY ? 0 : py, width, height);
 	}
 	
 	public function addImage( p : Element, x : Int, y : Int, i : Image ) {
@@ -156,20 +156,37 @@ class Context {
 		p.e.addChild(b);
 	}
 
-	public function getNativeFont( name : String, style : FontStyle ) : Font {
-		var kstyle = if( style.bold && style.italic )
-			flash.text.FontStyle.BOLD_ITALIC;
-		else if( style.bold )
-			flash.text.FontStyle.BOLD;
-		else if( style.italic )
-			flash.text.FontStyle.ITALIC;
-		else
-			flash.text.FontStyle.REGULAR;
-		for( f in flash.text.Font.enumerateFonts(true) ) {
-			if( f.fontName == name && f.fontStyle == kstyle )
+	static var FONT_HASH = null;
+	
+	public static function resolveFont( family : Array<String> ) : Font {
+		var h = FONT_HASH;
+		if( h == null ) {
+			h = new Hash();
+			for( f in flash.text.Font.enumerateFonts(true) )
+				h.set(f.fontName.toLowerCase(), f);
+			FONT_HASH = h;
+		}
+		for( name in family ) {
+			var name = name.toLowerCase();
+			var f = h.get(name);
+			// map some commonly used fonts which might not be accessible
+			if( f == null ) {
+				var alt = null;
+				switch( name ) {
+				case "helvetica": alt = ["arial"];
+				case "serif": alt = ["times new roman"];
+				case "sans-serif", "sans serif": alt = ["helvetica","arial"];
+				}
+				if( alt != null )
+					for( name in alt ) {
+						f = h.get(name);
+						if( f != null ) break;
+					}
+			}
+			if( f != null )
 				return new Font(f);
 		}
-		throw "Font not found " + name + "(" + kstyle + ")";
+		throw "Font not found " + family.join(" | ");
 		return null;
 	}
 	

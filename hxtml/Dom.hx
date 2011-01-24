@@ -94,20 +94,41 @@ class Dom {
 		browser.css.applyClasses(this);
 		if( parent != null )
 			style.inherit(parent.style);
+		if( childs != null )
+			for( d in childs )
+				d.updateStyle();
+		// margin collapse
 		if( style.marginTop != null ) {
 			var prev = getPrev();
-			if( prev != null && prev.style.marginBottom != null ) {
+			if( prev == null ) {
+				// give our margin to our parent - unless it has padding/border - will recurse
+				if( parent != null && (parent.style.paddingTop == null || parent.style.paddingTop == 0) && (parent.style.borderTop == null || parent.style.borderTop == 0) ) {
+					if( parent.style.marginTop == null || parent.style.marginTop < style.marginTop )
+						parent.style.marginTop = style.marginTop;
+					style.marginTop = 0;
+				}
+			} else if( prev.style.marginBottom != null ) {
+				// give our margin to our previous visible element
 				if( prev.style.marginBottom < style.marginTop )
 					prev.style.marginBottom = style.marginTop;
 				style.marginTop = 0;
 			}
 		}
-		if( childs != null )
-			for( d in childs )
-				d.updateStyle();
 	}
 
 	function initElement() {
+	}
+	
+	function evalUnits( u : Unit, size : Float ) {
+		if( u == null ) return 0;
+		switch( u ) {
+		case Pix(v):
+			return v;
+		case EM(v):
+			return Math.round(v * style.fontSize);
+		case Percent(v):
+			return Math.round(v * size);
+		}
 	}
 	
 	public function render() {
@@ -127,9 +148,19 @@ class Dom {
 			else {
 				var bw = contentWidth + plr;
 				var bh = contentHeight + ptb;
-				if( style.bgRepeatX == false && bw > img.width ) bw = img.width;
-				if( style.bgRepeatY == false && bh > img.height ) bh = img.height;
-				ctx.addBackgroundImage(e, img, style, bw, bh);
+				var px = evalUnits(style.bgPosX, bw - img.width);
+				var py = evalUnits(style.bgPosY, bh - img.height);
+				if( style.bgRepeatX == false ) {
+					bw -= px;
+					if( bw < 0 ) bw = 0;
+					if( bw > img.width ) bw = img.width;
+				}
+				if( style.bgRepeatY == false ) {
+					bh -= py;
+					if( bh < 0 ) bh = 0;
+					if( bh > img.height ) bh = img.height;
+				}
+				ctx.addBackgroundImage(e, img, style, px, py, bw, bh, style.bgRepeatX != false, style.bgRepeatY != false);
 			}
 		}
 		initElement();
@@ -310,6 +341,20 @@ class DomText extends Dom {
 			if( displayText == "" )
 				style.display = None;
 		}
+		if( style.textTransform != null )
+			switch( style.textTransform ) {
+			case TFNone:
+			case TFCapitalize:
+				var str = null;
+				for( w in displayText.split(" ") ) {
+					if( str == null ) str = "" else str += " ";
+					if( w.length > 0 )
+						str += w.charAt(0).toUpperCase()+w.substr(1);
+				}
+				displayText = str;
+			case TFLowercase: displayText = displayText.toLowerCase();
+			case TFUppercase: displayText = displayText.toUpperCase();
+			}
 	}
 	
 	override function updateSize(w, h) {
