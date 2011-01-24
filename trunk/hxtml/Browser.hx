@@ -71,15 +71,16 @@ class Browser {
 	}
 
 	function make( x : Xml ) : Dom {
+		// create element
 		switch( x.nodeType ) {
 		case Xml.CData:
 			throw "assert";
-		case Xml.PCData:
+		case Xml.PCData, Xml.Comment:
 			return new DomText(this,x.nodeValue);
 		}
 		var d : Dom;
 		var name = x.nodeName.toLowerCase();
-		var allowSpaces = true;
+		var allowSpaces = true, allowComments = false;
 		switch( name ) {
 		case "head", "link", "meta", "title":
 			allowSpaces = false;
@@ -93,11 +94,13 @@ class Browser {
 			d = new DomLink(this, name);
 		case "img":
 			d = new DomImage(this, name);
+		case "style":
+			d = new DomStyle(this, name);
+			allowComments = true;
 		default:
 			throw "Unsupported html node : " + x.nodeName;
 		}
-		for( a in x.attributes() )
-			d.setAttribute(a.toLowerCase(), x.get(a));
+		// build children
 		var prev : Dom = null, hasText = false;
 		for( c in x ) {
 			// remove empty texts
@@ -117,7 +120,8 @@ class Browser {
 					c.nodeValue = " " + c.nodeValue;
 				}
 			case Xml.Comment:
-				continue;
+				if( !allowComments )
+					continue;
 			default:
 				if( hasText ) {
 					hasText = false;
@@ -127,6 +131,9 @@ class Browser {
 			prev = make(c);
 			d.addChild(prev);
 		}
+		// init attributes
+		for( a in x.attributes() )
+			d.setAttribute(a.toLowerCase(), x.get(a));
 		return d;
 	}
 	
