@@ -17,6 +17,7 @@ typedef CssClass = {
 	var parent : Null<CssClass>;
 	var node : Null<String>;
 	var className : Null<String>;
+	var pseudoClass : Null<String>;
 	var id : Null<String>;
 }
 
@@ -48,7 +49,7 @@ class Style {
 	public var height : Null<Int>;
 	
 	public var display : Null<DisplayStyle>;
-	
+
 	public function new() {
 	}
 	

@@ -29,7 +29,7 @@ enum Value {
 	VHex( v : String );
 	VList( l : Array<Value> );
 	VGroup( l : Array<Value> );
-	VCall( v : Value, args : Array<Value> );
+	VUrl( v : String );
 	VLabel( v : String, val : Value );
 }
 
@@ -37,6 +37,7 @@ class CssParser {
 
 	var css : String;
 	var s : Style;
+	var simp : Style;
 	var pos : Int;
 	
 	var spacesTokens : Bool;
@@ -48,7 +49,7 @@ class CssParser {
 
 	// ----------------- style apply ---------------------------
 	
-	function applyStyle( r : String, v : Value ) : Bool {
+	function applyStyle( r : String, v : Value, s : Style ) : Bool {
 		switch( r ) {
 		case "margin":
 			var i = getPix(v);
@@ -126,14 +127,13 @@ class CssParser {
 				return true;
 		case "background-image":
 			switch( v ) {
-			case VCall(v, args):
-				if( getIdent(v) == "url" && args.length == 1 ) {
-					switch(args[0]) {
-					case VString(url):
-						s.bgImage = url;
-						return true;
-					default:
-					}
+			case VUrl(url):
+				s.bgImage = url;
+				return true;
+			case VIdent(i):
+				if( i == "none" ) {
+					s.bgImage = "";
+					return true;
 				}
 			default:
 			}
@@ -228,8 +228,8 @@ class CssParser {
 	
 	function isToken(t) {
 		var tk = readToken();
-		push(tk);
 		if( tk == t ) return true;
+		push(tk);
 		return false;
 	}
 	
@@ -248,7 +248,17 @@ class CssParser {
 			var r = readIdent();
 			expect(TDblDot);
 			var v = readValue();
-			if( !applyStyle(r, v) )
+			var s = this.s;
+			switch( v ) {
+			case VLabel(label, val):
+				if( label == "important" ) {
+					v = val;
+					if( simp == null ) simp = new Style();
+					s = simp;
+				}
+			default:
+			}
+			if( !applyStyle(r, v, s) )
 				throw "Invalid value " + Std.string(v) + " for css " + r;
 			if( isToken(eof) )
 				break;
@@ -267,7 +277,8 @@ class CssParser {
 			var classes = [];
 			while( true ) {
 				spacesTokens = true;
-				var c = readClass();
+				isToken(TSpaces); // skip
+				var c = readClass(null);
 				spacesTokens = false;
 				if( c == null ) break;
 				classes.push(c);
@@ -278,33 +289,38 @@ class CssParser {
 				unexpected(readToken());
 			expect(TBrOpen);
 			this.s = new Style();
+			this.simp = null;
 			parseStyle(TBrClose);
 			for( c in classes )
-				rules.push( { c : c, s : s } );
-			expect(TBrClose);
+				rules.push( { c : c, s : s, imp : false } );
+			if( this.simp != null )
+				for( c in classes )
+					rules.push( { c : c, s : simp, imp : true } );
 		}
 		return rules;
 	}
 	
 	// ----------------- class parser ---------------------------
 
-	function readClass() : CssClass {
+	function readClass( parent ) : CssClass {
 		var c : CssClass = {
-			parent : null,
+			parent : parent,
 			node : null,
 			id : null,
 			className : null,
+			pseudoClass : null,
 		};
+		var def = false;
 		var last = null;
 		while( true ) {
 			var t = readToken();
 			if( last == null )
 				switch( t ) {
-				case TDot: last = t;
-				case TIdent(i): c.node = i;
+				case TDot, TSharp, TDblDot: last = t;
+				case TIdent(i): c.node = i; def = true;
 				case TSpaces:
-					break;
-				case TBrOpen:
+					return def ? readClass(c) : null;
+				case TBrOpen, TComma:
 					push(t);
 					break;
 				default:
@@ -314,7 +330,9 @@ class CssParser {
 				switch( t ) {
 				case TIdent(i):
 					switch( last ) {
-					case TDot: c.className = i;
+					case TDot: c.className = i; def = true;
+					case TSharp: c.id = i; def = true;
+					case TDblDot: c.pseudoClass = i; def = true;
 					default: throw "assert";
 					}
 					last = null;
@@ -322,7 +340,7 @@ class CssParser {
 					unexpected(t);
 				}
 		}
-		return c;
+		return def ? c : parent;
 	}
 	
 	// ----------------- value parser ---------------------------
@@ -378,13 +396,19 @@ class CssParser {
 		var t = readToken();
 		return switch( t ) {
 		case TPOpen:
-			var p = readValue();
-			expect(TPClose);
-			var args = switch( p ) {
-			case VList(l): l;
-			default: [p];
+			switch( v ) {
+			case VIdent(i):
+				switch( i ) {
+				case "url":
+					readValueNext(VUrl(readUrl()));
+				default:
+					push(t);
+					v;
+				}
+			default:
+				push(t);
+				v;
 			}
-			readValueNext(VCall(v, args));
 		case TExclam:
 			var t = readToken();
 			switch( t ) {
@@ -451,6 +475,35 @@ class CssParser {
 	inline function next() {
 		return StringTools.fastCodeAt(css, pos++);
 	}
+
+	function readUrl() {
+		var c0 = next();
+		while( isSpace(c0) )
+			c0 = next();
+		var quote = c0;
+		if( quote == "'".code || quote == '"'.code ) {
+			pos--;
+			switch( readToken() ) {
+			case TString(s):
+				var c0 = next();
+				while( isSpace(c0) )
+					c0 = next();
+				if( c0 != ")".code )
+					throw "Invalid char " + String.fromCharCode(c0);
+				return s;
+			default: throw "assert";
+			}
+			
+		}
+		var start = pos - 1;
+		while( true ) {
+			if( StringTools.isEOF(c0) )
+				break;
+			c0 = next();
+			if( c0 == ")".code ) break;
+		}
+		return StringTools.trim(css.substr(start, pos - start - 1));
+	}
 	
 	#if false
 	function readToken( ?pos : haxe.PosInfos ) {
@@ -458,7 +511,7 @@ class CssParser {
 		haxe.Log.trace(t, pos);
 		return t;
 	}
-			
+	
 	function _readToken() {
 	#else
 	function readToken() {
@@ -484,7 +537,7 @@ class CssParser {
 				var pos = pos - 1;
 				do c = next() while( isIdentChar(c) );
 				this.pos--;
-				return TIdent(css.substr(pos,this.pos - pos));
+				return TIdent(css.substr(pos,this.pos - pos).toLowerCase());
 			}
 			if( isNum(c) ) {
 				var i = 0;
@@ -506,6 +559,7 @@ class CssParser {
 			case ".".code: return TDot;
 			case "{".code: return TBrOpen;
 			case "}".code: return TBrClose;
+			case ",".code: return TComma;
 			case "/".code:
 				if( (c = next()) != '*'.code )
 					pos--;

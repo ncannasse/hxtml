@@ -117,7 +117,7 @@ class Dom {
 		var ptb = style.paddingTop + style.paddingBottom;
 		if( style.bgColor != null && !style.bgTransparent )
 			ctx.addBackground(e, style.bgColor, contentWidth + plr, contentHeight + ptb);
-		if( style.bgImage != null ) {
+		if( style.bgImage != null && style.bgImage != "" ) {
 			var me = this;
 			var img = ctx.loadImage(style.bgImage, function(_) {
 				me.browser.invalidate();
@@ -256,7 +256,7 @@ class Dom {
 
 class DomText extends Dom {
 	
-	var text : String;
+	public var text(default,null) : String;
 	var telt : Context.Text;
 	var displayText : String;
 	
@@ -386,6 +386,29 @@ class DomHidden extends Dom {
 	}
 
 	override function updatePos(x,y) {
+	}
+	
+}
+
+class DomStyle extends DomHidden {
+	
+	var styleInit : Bool;
+	
+	override function setAttribute( a : String, v : String ) {
+		switch( a ) {
+		case "type": return;
+		default:
+		}
+		super.setAttribute(a, v);
+	}
+	
+	override function updateStyle() {
+		super.updateStyle();
+		if( styleInit ) return;
+		styleInit = true;
+		var c = childs[0];
+		if( c.name == null )
+			browser.css.addRules(c.getText().text);
 	}
 	
 }

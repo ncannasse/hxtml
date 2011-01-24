@@ -1,10 +1,18 @@
 package hxtml;
 import hxtml.Style;
 
+class CssRule {
+	public var c : CssClass;
+	public var priority : Int;
+	public var s : Style;
+	public function new() {
+	}
+}
+
 class CssEngine {
 	
 	var browser : Browser;
-	var rules : Array<{ c : CssClass, s : Style }>;
+	var rules : Array<CssRule>;
 	
 	public function new(b) {
 		browser = b;
@@ -28,6 +36,8 @@ class CssEngine {
 			s.display = Block;
 		case "br":
 			s.display = Block;
+		case "style":
+			s.display = None;
 		}
 		return s;
 	}
@@ -47,13 +57,21 @@ class CssEngine {
 		var s = new Style();
 		applyDefaultStyle(s, d.name);
 		d.style = s;
-		for( r in rules ) {
+		var rules = [];
+		for( r in this.rules ) {
 			if( !ruleMatch(r.c, d) )
 				continue;
-			s.apply(r.s);
+			rules.push(r);
 		}
+		rules.sort(sortByPriority);
+		for( r in rules )
+			s.apply(r.s);
 		if( d.defStyle != null )
 			s.apply(d.defStyle);
+	}
+	
+	function sortByPriority(r1:CssRule, r2:CssRule) {
+		return r1.priority - r2.priority;
 	}
 	
 	function ruleMatch( c : CssClass, d : Dom ) {
@@ -79,8 +97,23 @@ class CssEngine {
 	}
 	
 	public function addRules( text : String ) {
-		var rules = new CssParser().parseRules(text);
-		this.rules = this.rules.concat(rules);
+		for( r in new CssParser().parseRules(text) ) {
+			var c = r.c;
+			var imp = r.imp ? 1 : 0;
+			var nids = 0, nothers = 0, nnodes = 0;
+			while( c != null ) {
+				if( c.id != null ) nids++;
+				if( c.node != null ) nnodes++;
+				if( c.pseudoClass != null ) nothers++;
+				if( c.className != null ) nothers++;
+				c = c.parent;
+			}
+			var rule = new CssRule();
+			rule.c = r.c;
+			rule.s = r.s;
+			rule.priority = (imp << 24) | (nids << 16) | (nothers << 8) | nnodes;
+			rules.push(rule);
+		}
 	}
 	
 }
