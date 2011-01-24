@@ -1,28 +1,23 @@
 CSS
-- font-family / font-variant / font-weight
 - letter-spacing / word-spacing / text-indent
 - text-align
-- color hex 3/6 + missing constants
-- size "em" units
-- width %
+- relative width/margin/padding
+- negative margins
 - borders / -moz-border-radius
 - vertical-align
-- background-position
-- background composites
-- margin/padding composites
 - float / clear
 - overflows
 - visibility
 - max/min-height, max/min-width
 - position : absolute,
 	top, left, right, bottom, z-index
-- text-transform
-- text-decoration
 - font composites
 - white-space
 - direction : exception on rtl
 - cursor
 - opacity
+- line-height
+- make em, b, strong, i breakable
 
 HTML
 - tables
@@ -35,3 +30,11 @@ HTML
 - i / em / b / strong
 - forms (form, input, select, option, textarea)
 - script
+
+
+Not supported :
+- not absolute font-size (em, %)
+- font-variant : small-caps
+- background-attachment : fixed
+- text-decoration other than underline
+

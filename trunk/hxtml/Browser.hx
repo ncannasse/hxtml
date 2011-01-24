@@ -88,7 +88,7 @@ class Browser {
 		case "html":
 			allowSpaces = false;
 			d = new Dom(this, name);
-		case "div", "span", "body":
+		case "div", "span", "body", "br":
 			d = new Dom(this, name);
 		case "a":
 			d = new DomLink(this, name);

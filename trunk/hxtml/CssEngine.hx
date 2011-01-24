@@ -24,13 +24,15 @@ class CssEngine {
 		switch( node ) {
 		case "body":
 			s.margin(8, 8, 8, 8);
-			s.font = browser.ctx.getNativeFont("Times New Roman", { bold : false, italic : false });
+			s.fontFamily = ["Times New Roman"];
+			s.fontWeight = true;
+			s.fontStyle = FSNormal;
 			s.fontSize = 16;
 		case "html":
 			s.bgColor = 0xFFFFFF;
 			s.width = browser.ctx.pageWidth;
 		case "a":
-			s.underline = true;
+			s.textDecoration = TDUnderline;
 			s.textColor = 0x0000CC;
 		case "div":
 			s.display = Block;
